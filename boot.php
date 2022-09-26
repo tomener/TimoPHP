@@ -9,9 +9,9 @@
 date_default_timezone_set('Asia/Chongqing');
 
 //检查环境版本
-version_compare(PHP_VERSION, '7.0.0', '>=') || die('requires PHP 7.0.0+ Please upgrade!');
+version_compare(PHP_VERSION, '7.2.0', '>=') || die('requires PHP 7.0.0+ Please upgrade!');
 
-define('VERSION', '1.9.0');
+define('VERSION', '1.9.2');
 
 defined('DS') || define('DS', DIRECTORY_SEPARATOR);
 
