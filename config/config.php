@@ -52,6 +52,6 @@ return [
     'default_jsonp_handler' => 'jsonp_handler',
     'default_return_type' => 'html',
     // 默认跳转页面对应的模板文件
-    'jump_success_tpl'  => FRAME_PATH . 'tpl' . DS . 'jump.tpl.php',
-    'jump_error_tpl'    => FRAME_PATH . 'tpl' . DS . 'jump.tpl.php',
+    'jump_success_tpl'  => FRAME_PATH . 'source' . DS . 'tpl' . DS . 'jump.tpl.php',
+    'jump_error_tpl'    => FRAME_PATH . 'source' . DS . 'tpl' . DS . 'jump.tpl.php',
 ];

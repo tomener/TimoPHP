@@ -6,7 +6,7 @@
  * Since: 2016
  */
 
-namespace Timo;
+namespace Timo\Helper;
 
 use Timo\Core\Request;
 

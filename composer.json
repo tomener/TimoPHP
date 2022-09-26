@@ -18,6 +18,9 @@
         "ext-zlib": "*"
     },
     "autoload": {
+        "files": [
+            "boot.php"
+        ],
         "psr-4": {
             "Timo\\": "src/"
         }

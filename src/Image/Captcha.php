@@ -6,7 +6,7 @@
  * Since: 2016
  */
 
-namespace Timo;
+namespace Timo\Image;
 
 /**
  * 验证码类

@@ -6,7 +6,7 @@
  * Since: 2016
  */
 
-namespace Timo;
+namespace Timo\File;
 
 
 /**
@@ -15,7 +15,7 @@ namespace Timo;
  * Class UploadFiles
  * @package Timo
  */
-class UploadFiles
+class Upload
 {
     private $config = [
         'maxSize' => 8388608, //文件大小限制（默认：8M）
