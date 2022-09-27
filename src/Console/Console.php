@@ -21,10 +21,17 @@ class Console
 
     protected $params = [];
 
+    protected $map = [
+        'serve' => [
+            '-h' => 'host',
+            '-p' => 'port',
+            '-r' => 'root'
+        ],
+    ];
+
     private $commands = [
         '-v' => 'version',
         '-version' => 'version',
-        '-c' => 'create',
         '-h' => 'help',
     ];
 
@@ -32,13 +39,14 @@ class Console
     {
         $this->engine = new Engine();
         $this->engine->init();
+
+        $this->parse();
     }
 
     public function start()
     {
-        $this->parseParams();
         if (method_exists($this, $this->command)) {
-            call_user_func_array(array($this, $this->command), $this->params);
+            call_user_func_array([$this, $this->command], []);
             return;
         }
 
@@ -48,6 +56,50 @@ class Console
         }
 
         $this->parseRoute($seg);
+    }
+
+    /**
+     * 框架版本号
+     */
+    public function version()
+    {
+        echo self::colorLightBlue('TimoPHP v' . VERSION) . PHP_EOL;
+    }
+
+    /**
+     * 帮助文档
+     */
+    public function help()
+    {
+        echo self::colorLightBlue('Usage') . ":\n\n"
+            . " " . self::colorLightRed('-h') . " help\n"
+            . " " . self::colorLightRed('-v -version') . " version\n";
+    }
+
+    /**
+     * php timo serve -h 127.0.0.1 -p 8080 -r
+     */
+    public function serve()
+    {
+        $host = $this->params['host'] ?? '0.0.0.0';
+        $port = $this->params['port'] ?? '8090';
+        $root = $this->params['root'] ?? '';
+        if (empty($root)) {
+            $root = ROOT_PATH . 'public';
+        }
+
+        $command = sprintf(
+            'php -S %s:%d -t %s %s',
+            $host,
+            $port,
+            escapeshellarg($root),
+            escapeshellarg($root . DIRECTORY_SEPARATOR . 'router.php')
+        );
+
+        printf(self::colorGreen('TimoPHP Development server is started On') . " <http://%s:%s/>\n", $host, $port);
+        printf("You can exit with `".self::colorLightRed("CTRL-C")."`\n");
+        printf("Document root is: %s\n", $root);
+        passthru($command);
     }
 
     /**
@@ -61,28 +113,15 @@ class Console
 
         $controller = $router[0];
         $action = $router[1];
-        $params = [];
-
-        if (count($this->params) > 0) {
-            foreach ($this->params as $param) {
-                $temp = explode('=', $param);
-                $params[$temp[0]] = $temp[1];
-            }
-        }
 
         $controller = ucfirst($controller);
-        $this->engine->run($controller, $action, $params);
+        $this->engine->run($controller, $action, $this->params);
     }
 
     /**
-     * 框架版本号
+     * 命令行解析
      */
-    public function version()
-    {
-        echo self::colorLightBlue('TimoPHP v' . VERSION) . PHP_EOL;
-    }
-
-    private function parseParams()
+    private function parse()
     {
         global $argv;
         global $argc;
@@ -95,7 +134,30 @@ class Console
             $this->command = $this->commands[$argv[1]];
         }
 
-        $this->params = array_slice($argv, 2);
+        $inputs = array_slice($argv, 2);
+        $this->parseParams($inputs);
+    }
+
+    /**
+     * 解析参数
+     *
+     * @param $inputs
+     */
+    private function parseParams($inputs)
+    {
+        $map = isset($this->map[$this->command]) ? $this->map[$this->command] : [];
+
+        $key = '';
+        foreach ($inputs as $input) {
+            if (isset($map[$input])) {
+                $key = $map[$input];
+            } elseif (substr($input, 0, 1) == '-') {
+                $key = substr($input, 1);
+            } elseif (!empty($key)) {
+                $this->params[$key] = $input;
+                $key = '';
+            }
+        }
     }
 
     public static function colorLightRed($str)
