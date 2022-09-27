@@ -4,7 +4,7 @@
 namespace Timo\cli;
 
 use Timo\File\File;
-use Timo\Helper;
+use Timo\Helper\Helper;
 
 define('DS', DIRECTORY_SEPARATOR);
 define('ROOT_PATH', dirname(dirname(__DIR__)) . DS);

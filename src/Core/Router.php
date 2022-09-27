@@ -40,11 +40,7 @@ class Router
      */
     function __construct()
     {
-        if (!IS_CLI) {
-            $this->parse();
-        } else {
-            $this->parseCli();
-        }
+        $this->parse();
     }
 
     /**
@@ -110,43 +106,6 @@ class Router
         }
 
         $this->controller = $controller;
-        $this->action = $action;
-        $this->param = $param;
-        return true;
-    }
-
-    /**
-     * CLI模式解析路由
-     *
-     * @return bool
-     * @throws CoreException
-     */
-    private function parseCli()
-    {
-        self::loadAppConfig();
-
-        $param = [];
-        $url = Config::runtime('url');
-        $controller = $url['c'];
-        $action = $url['a'];
-
-        $argv = $_SERVER['argv'];
-        if (isset($argv[1])) {
-            $router = explode('/', $argv[1]);
-            $controller = isset($router[0]) ? $router[0] : $controller;
-            $action = isset($router[1]) ? $router[1] : $action;
-        }
-        array_shift($argv);
-        array_shift($argv);
-
-        if (count($argv) > 0) {
-            foreach ($argv as $value) {
-                $temp = explode('=', $value);
-                $param[$temp[0]] = $temp[1];
-            }
-        }
-
-        $this->controller = ucfirst($controller);
         $this->action = $action;
         $this->param = $param;
         return true;
@@ -223,7 +182,7 @@ class Router
     /*
      * 加载应用配置
      */
-    private static function loadAppConfig()
+    public static function loadAppConfig()
     {
         $app_config = APP_DIR_PATH . APP_NAME . DS . 'config.php';
         if (file_exists($app_config)) {

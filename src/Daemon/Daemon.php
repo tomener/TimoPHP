@@ -11,8 +11,6 @@ namespace Timo\Daemon;
 
 use Timo\Core\App;
 use Timo\Core\Container;
-use Timo\Core\Db;
-use Timo\Loader;
 use Timo\Orm\Connection;
 
 class Daemon
@@ -124,8 +122,6 @@ class Daemon
     {
         $current_time = time();
         if ($current_time - $this->db_destroy_time > 60) {
-            Db::destroy();
-            Loader::destroy();
             \Timo\Orm\Db::destroy();
             Connection::destroy();
             $this->db_destroy_time = $current_time;

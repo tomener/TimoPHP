@@ -14,12 +14,15 @@ use Timo\Exception\CoreException;
 
 class Engine
 {
-    /**
-     * @var Router
-     */
-    private $router;
-
     public function __construct()
+    {
+        $this->init();
+    }
+
+    /**
+     * 初始化
+     */
+    public function init()
     {
         spl_autoload_register([__CLASS__, 'loadClass']);
 
@@ -29,8 +32,6 @@ class Engine
         $this->loadConfig();
 
         defined('CACHE_PATH') || define('CACHE_PATH', Config::runtime('cache.path'));
-
-        $this->router = new Router();
     }
 
     /**
@@ -40,9 +41,11 @@ class Engine
      */
     public function start()
     {
-        $controller = $this->router->getController();
-        $action = $this->router->getAction();
-        $params = $this->router->getParam();
+        $router = new Router();
+        $controller = $router->getController();
+        $action = $router->getAction();
+        $params = $router->getParam();
+
         $this->run($controller, $action, $params);
     }
 
