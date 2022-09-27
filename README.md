@@ -37,7 +37,7 @@
   |   |   |   |-controller          控制器目录
   |   |   |   |_config.php          项目配置文件（可以去除）
   |   |   |-cli                     命令行应用
-  |   |-business                    公共业务逻辑
+  |   |-logic                       公共业务逻辑
   |   |-cache                       运行时缓存目录
   |   |-provider                    服务提供者目录
   |   |-config                      公共配置目录
@@ -57,23 +57,23 @@
   |   |-task                        异步任务
   |   |-vendor                      composer安装类库目录
   |   |_composer.json
-  |-TimoPHP                         框架，和项目在同一级目录
  ```
 
 ## 新建一个项目
 ```
-php TimoPHP/bin/timo -c 项目名称 应用名称 [应用类型]
-应用类型：api或者web，默认api（接口类型）
-
-#示例，在当前目录创建一个项目hoole，并在项目下创建了一个应用api
-php TimoPHP/bin/timo -c hoole api
+> cd 你的项目存放目录
+> composer create-project tomener/timo timo-demo
+> cd timo-demo
+> php timo serve
 ```
+### 打开浏览器访问
+> 访问：http://localhost:8090
 
 
 ## 入口模式
 
-##### 多入口
+#### 多入口
 一个应用一个入口，默认
 
-##### 单一入口
+#### 单一入口
 所有应用共用一个入口
