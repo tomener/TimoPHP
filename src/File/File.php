@@ -114,6 +114,18 @@ class File
     }
 
     /**
+     * 复制文件
+     *
+     * @param $source string
+     * @param $dist string
+     * @return bool
+     */
+    public static function copy($source, $dist)
+    {
+        return copy($source, $dist);
+    }
+
+    /**
      * 获取文件类型代码
      *
      * @param $filepath

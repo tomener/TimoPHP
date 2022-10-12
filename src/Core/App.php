@@ -11,6 +11,13 @@ namespace Timo\Core;
 
 class App
 {
+    public static $version = '1.9.6';
+
+    /**
+     * @var string 环境
+     */
+    public static $env = '';
+
     /**
      * @var string 控制器名
      */

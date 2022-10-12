@@ -189,7 +189,7 @@ class Daemon
      */
     protected function restart()
     {
-        $log_file = '/data/log/worker/timo_' . ENV . '_' . lcfirst(App::controller()) . '.log';
+        $log_file = '/data/log/worker/timo_' . App::$env . '_' . lcfirst(App::controller()) . '.log';
         $cmd = 'nohup /usr/local/php/bin/php ' . $this->script . ' ' . $this->operate . ' >> ' . $log_file . ' 2>&1 &';
 
         exec($cmd);

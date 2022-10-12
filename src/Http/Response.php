@@ -24,7 +24,7 @@ class Response
         'text'   => 'text/plain',
     ];
 
-    private $type;
+    private $type = '';
 
     private $headers = [
         'Content-Type' => 'text/html; charset=utf-8'
@@ -42,14 +42,41 @@ class Response
      *
      * @return Response
      */
-    public static function create()
+    public static function instance()
     {
         if (is_null(self::$response)) {
             self::$response = new Response();
-            self::$response->type = Config::runtime('default_return_type');
         }
 
         return self::$response;
+    }
+
+    /**
+     * 创建响应对象并设置响应类型
+     *
+     * @param $type string html json
+     */
+    public static function new($type = '')
+    {
+        $response = new Response();
+        if (!empty($type)) {
+            $response->type = $type;
+        }
+        $response->headers['Content-Type'] = $response->contentType[$response->type] . '; charset=utf-8';
+        return $response;
+    }
+
+    /**
+     * 默认响应
+     *
+     * @return Response
+     */
+    public static function default()
+    {
+        $response = self::instance();
+        $response->type = Config::runtime('http_content_type');
+        $response->headers['Content-Type'] = $response->contentType[$response->type] . '; charset=utf-8';
+        return $response;
     }
 
     /**
@@ -92,19 +119,6 @@ class Response
     }
 
     /**
-     * 创建响应对象并设置响应类型
-     *
-     * @param $type string html json
-     */
-    public static function type($type)
-    {
-        $response = self::create();
-        $response->type = $type;
-        $response->headers['Content-Type'] = $response->contentType[$type] . '; charset=utf-8';
-        return $response;
-    }
-
-    /**
      * 设置响应头
      *
      * @param $name
@@ -133,16 +147,23 @@ class Response
     }
 
     /**
-     * 响应数据类型
+     * 获取或设置响应数据类型
      *
      * @param $type
      * @return $this
      */
-    public function responseType($type)
+    public function type($type = null)
     {
-        $this->type = $type;
-        $this->headers['Content-Type'] = $this->contentType[$type] . '; charset=utf-8';
-        return $this;
+        if ($type != null) {
+            $this->type = $type;
+            $this->headers['Content-Type'] = $this->contentType[$type] . '; charset=utf-8';
+            return $this;
+        }
+
+        if ($this->type == '') {
+            $this->type = Config::runtime('http_content_type');
+        }
+        return $this->type;
     }
 
     /**
@@ -155,6 +176,19 @@ class Response
     {
         $this->code = $code;
         return $this;
+    }
+
+    /**
+     * 重定向
+     *
+     * @param string $url
+     * @param int $code
+     */
+    public static function redirect($url, $code = 302)
+    {
+        http_response_code($code);
+        header('Location:' . $url);
+        exit;
     }
 
     /**

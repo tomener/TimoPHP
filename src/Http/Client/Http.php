@@ -6,14 +6,14 @@
  * Since: 2016
  */
 
-namespace Timo\Http;
+namespace Timo\Http\Client;
 
 
-class Client
+class Http
 {
-    public static function make() : Client
+    public static function make() : Http
     {
-        return new Client();
+        return new Http();
     }
 
     public static function get($url)

@@ -9,6 +9,7 @@
 namespace Timo\Console;
 
 
+use Timo\Core\App;
 use Timo\Core\Engine;
 use Timo\Core\Router;
 use Timo\Exception\CoreException;
@@ -63,7 +64,7 @@ class Console
      */
     public function version()
     {
-        echo self::colorLightBlue('TimoPHP v' . VERSION) . PHP_EOL;
+        echo self::colorLightBlue('TimoPHP v' . App::$version) . PHP_EOL;
     }
 
     /**
@@ -115,7 +116,7 @@ class Console
         $action = $router[1];
 
         $controller = ucfirst($controller);
-        $this->engine->run($controller, $action, $this->params);
+        $this->engine->run($controller, $action, array_values($this->params));
     }
 
     /**
@@ -156,6 +157,9 @@ class Console
             } elseif (!empty($key)) {
                 $this->params[$key] = $input;
                 $key = '';
+            } elseif (strpos($input, '=') !== false) {
+                $seg = explode('=', $input);
+                $this->params[$seg[0]] = $seg[1];
             }
         }
     }

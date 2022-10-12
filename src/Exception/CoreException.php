@@ -11,7 +11,7 @@ namespace Timo\Exception;
 
 use Exception;
 use Timo\Core\App;
-use Timo\Core\Response;
+use Timo\Http\Response;
 use Timo\Log\Log;
 
 class CoreException extends Exception
@@ -47,8 +47,7 @@ class CoreException extends Exception
             $code = 404;
             $msg = 'App('. APP_NAME . ') ' . $e->getMessage();
         }
-        Response::sendResponseCode($code);
-        Response::send(App::result($code, $msg), 'json');
+        Response::default()->code($code)->send(App::result($code, $msg));
     }
 
     /**

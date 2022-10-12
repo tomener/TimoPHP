@@ -10,6 +10,7 @@ namespace Timo\Core;
 
 
 use Timo\Config\Config;
+use Timo\Http\Response;
 
 class Controller
 {
@@ -116,7 +117,7 @@ class Controller
             $this->view->set('layer_on', false);
             $result = $this->view->render(Config::runtime('jump_' . $tpl . '_tpl'), $result);
         } else {
-            Response::type($type);
+            Response::instance()->type($type);
         }
         return $result;
     }
@@ -155,9 +156,9 @@ class Controller
     protected function display($template = '', $vars = [], $http_response_status = 200)
     {
         if ($http_response_status != 200) {
-            Response::sendResponseCode($http_response_status);
+            Response::instance()->code($http_response_status);
         }
-        return Response::send($this->view->render($template, $vars), Response::type(), false, false);
+        return Response::default()->send($this->view->render($template, $vars));
     }
 
     /**
@@ -169,7 +170,7 @@ class Controller
     protected function getResponseType()
     {
         $isAjax = Request::isAjax();
-        return $isAjax ? 'json' : Response::type();
+        return $isAjax ? 'json' : Response::instance()->type();
     }
 
     /**

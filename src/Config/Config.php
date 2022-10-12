@@ -9,6 +9,8 @@
 namespace Timo\Config;
 
 
+use Timo\Core\App;
+
 class Config
 {
     /**
@@ -105,7 +107,7 @@ class Config
     {
         if (!is_array($config_file)) {
             if (!is_file($config_file)) {
-                $env_path = !defined('ENV') ? '' : strtolower(ENV) . DS;
+                $env_path = !empty(App::$env) ? App::$env . DS : '';
                 $config_file = ROOT_PATH . 'config' . DS . $env_path . $config_file . '.config.php';
             }
             if (!is_file($config_file)) {

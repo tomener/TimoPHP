@@ -11,6 +11,7 @@ namespace Timo\Core;
 
 use Timo\Config\Config;
 use Timo\Exception\CoreException;
+use Timo\Http\Response;
 
 class Engine
 {
@@ -74,7 +75,7 @@ class Engine
 
         $data = call_user_func_array([$handler, $action], $params);
         if ($data != null) {
-            Response::send($data, Response::type());
+            Response::default()->send($data);
         }
     }
 
@@ -86,10 +87,10 @@ class Engine
         $env_config = ROOT_PATH . 'config' . DS . 'env.config.php';
         if ($env_exists = file_exists($env_config)) {
             $env = include $env_config;
-            defined('ENV') || define('ENV', $env['env'] ?? 'dev');
+            App::$env = $env['env'] ?? 'dev';
             defined('APP_DEBUG') || define('APP_DEBUG', $env['app_debug'] ?? false);
         }
-        $env_path = !defined('ENV') ? '' : strtolower(ENV) . DS;
+        $env_path = !empty(App::$env) ? App::$env . DS : '';
 
         $config_files = [
             FRAME_PATH . 'config' . DS . 'config.php',
@@ -160,7 +161,7 @@ class Engine
 
         if ($space == 'Timo') {
             $class_name = substr($class_name, $pos + 1);
-            $class_file = LIBRARY_PATH . $class_name . '.php';
+            $class_file = FRAME_PATH . 'src' . DS . $class_name . '.php';
         } else {
             $class_file = ROOT_PATH . $class_name . '.php';
         }
@@ -170,14 +171,6 @@ class Engine
             return true;
         }
 
-        //后面废弃
-        $class_file = ROOT_PATH . 'lib' . DIRECTORY_SEPARATOR . $class_name . '.php';
-
-        if (!file_exists($class_file)) {
-            //throw new CoreException('class ' . $class_file . ' not found.', 404);
-        } else {
-            require $class_file;
-        }
         return true;
     }
 
@@ -200,8 +193,7 @@ class Engine
             $doc = $reflector->getMethod($action)->getDocComment();
             preg_match('/@method (.*)\b/', $doc, $match);
             if (!empty($match) && $method != $match[1]) {
-                Response::sendResponseCode(405);
-                Response::send(App::result(405, 'Method Not Allowed'), Response::type());
+                Response::default()->code(405)->send(App::result(405, 'Method Not Allowed'));
             }
         } catch (\ReflectionException $e) {
             throw new CoreException("Request Method Not Allowed");

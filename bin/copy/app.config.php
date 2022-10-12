@@ -8,5 +8,5 @@ return [
         'mode' => 2, //0普通模式 1PATHINFO模式 2REWRITE模式 3兼容模式
         'ext' => '/',
     ],
-    'default_return_type' => '__TYPE__',
+    'http_content_type' => '__TYPE__',
 ];

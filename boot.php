@@ -9,9 +9,7 @@
 date_default_timezone_set('Asia/Chongqing');
 
 //检查环境版本
-version_compare(PHP_VERSION, '7.2.0', '>=') || die('requires PHP 7.0.0+ Please upgrade!');
-
-define('VERSION', '1.9.5');
+version_compare(PHP_VERSION, '7.2.0', '>=') || die('requires PHP 7.2.0+ Please upgrade!');
 
 defined('DS') || define('DS', DIRECTORY_SEPARATOR);
 
@@ -21,13 +19,11 @@ defined('APP_DIR_PATH') || define('APP_DIR_PATH', ROOT_PATH . 'app' . DS);
 
 define('FRAME_PATH', __DIR__ . DS);
 
-define('LIBRARY_PATH', FRAME_PATH . 'src' . DS);
-
-// 环境常量
+//环境常量
 define('IS_CGI', strpos(PHP_SAPI, 'cgi') !== false ? 1 : 0);
 define('IS_WIN', strstr(PHP_OS, 'WIN') ? 1 : 0);
 define('IS_MAC', strstr(PHP_OS, 'Darwin') ? 1 : 0);
 define('IS_CLI', PHP_SAPI == 'cli' ? 1 : 0);
 define('NOW_TIME', $_SERVER['REQUEST_TIME']);
 
-require LIBRARY_PATH . 'Core' . DS . 'Engine.php';
+require FRAME_PATH . 'src' . DS . 'Core' . DS . 'Engine.php';
