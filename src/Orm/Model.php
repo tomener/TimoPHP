@@ -134,35 +134,34 @@ class Model
      * 通过主键获取记录
      *
      * @param int|array $id 主键ID
-     * @param string $fields
+     * @param string $select
      * @return array
      */
-    public static function find($id, $fields = '*')
+    public static function find($id, $select = '*')
     {
         $model = static::instance();
-        $row = $model->connect()->table($model->getTable())->fields($fields)->where($id)->row();
-        return $row;
+        return $model->connect()->table($model->getTable())->select($select)->where($id)->row();
     }
 
     /**
      * 获取所有记录
      *
-     * @param string $fields
+     * @param string $select
      * @return array
      */
-    public static function select($fields = '*')
+    public static function list($select = '*')
     {
         $model = static::instance();
-        return $model->connect()->table($model->getTable())->fields($fields)->select();
+        return $model->connect()->table($model->getTable())->select($select)->list(false);
     }
 
     /**
-     * 设置条件
+     * 设置查询条件
      *
-     * @param $column
+     * @param null $column
      * @param null $operator
      * @param null $value
-     * @return Connection
+     * @return Query
      */
     public static function where($column = null, $operator = null, $value = null)
     {
@@ -193,10 +192,10 @@ class Model
      * @param bool $return_id
      * @return bool|int
      */
-    public static function insertMulti(array $data, $return_id = true)
+    public static function insertList(array $data, $return_id = true)
     {
         $model = static::instance();
-        return $model->connect()->table($model->getTable())->insertMulti($data, $return_id);
+        return $model->connect()->table($model->getTable())->insertList($data, $return_id);
     }
 
     /**

@@ -66,11 +66,6 @@ class Connection
     protected $tables = [];
 
     /**
-     * @var array 查询选项
-     */
-    public $qos = [];
-
-    /**
      * 获取数据库连接实例
      *
      * @param $conf string|array 数据库名称|配置
@@ -82,15 +77,14 @@ class Connection
         if (!is_array($conf)) {
             $conf = Config::runtime('mysql.' . $conf);
         }
-        $name = md5(serialize($conf) . implode(',', array_keys($options)));
+        $name = md5(serialize($conf) . serialize($options));
         if (!isset(self::$instances[$name])) {
-            $connection = new self();
+            $connection = new static();
             $connection->pdo = self::connect($conf, $options);
             $connection->rwSeparate = isset($conf['rw_separate']) ? $conf['rw_separate'] : false;
             $connection->config = $conf;
             $connection->database = $conf['database'];
             $connection->prefix = $conf['prefix'];
-            $connection->resetOptions();
             self::$instances[$name] = $connection;
         }
         return self::$instances[$name];
@@ -107,7 +101,7 @@ class Connection
     public static function connect(array $conf, $options = [])
     {
         $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $conf['host'], $conf['port'], $conf['database'], $conf['charset']);
-        $name = md5(serialize($conf) . implode(',', array_keys($options)));
+        $name = md5(serialize($conf) . serialize($options));
 
         if (isset(self::$pdos[$name]) && is_a(self::$pdos[$name], 'PDO')) {
             return self::$pdos[$name];
@@ -160,16 +154,13 @@ class Connection
     }
 
     /**
-     * 设置表名
-     *
      * @param $table
-     * @param $is_full
-     * @return $this
+     * @return Query
      */
     public function table($table)
     {
-        $this->qos['table'] = $table;
-        return $this;
+        $query = new Query($this);
+        return $query->table($table);
     }
 
     /**
@@ -177,268 +168,65 @@ class Connection
      *
      * @param $table
      * @param $is_full
-     * @return $this
+     * @return Query
      */
     public function name($table)
     {
-        $this->qos['table'] = $this->prefix . $table;
-        return $this;
-    }
-
-    /**
-     * 设置字段
-     *
-     * @param $fields
-     * @return $this
-     */
-    public function fields($fields)
-    {
-        $this->qos['fields'] = $fields;
-        return $this;
-    }
-
-    /**
-     * 设置条件
-     *
-     * @param $column
-     * @param null $operator
-     * @param null $value
-     * @return $this
-     */
-    public function where($column, $operator = null, $value = null)
-    {
-        if ($column instanceof \Closure) {
-            if (empty($column())) {
-                return $this;
-            }
-            $this->qos['where'][] = ' AND (';
-            $this->qos['where'][] = $column;
-            $this->qos['where'][] = ')';
-        } else {
-            if (!is_array($column) && is_null($operator) && is_null($value)) {
-                $operator = '=';
-                $value = $column;
-                $column = $this->getPrimaryKey($this->qos['table']);
-            }
-            $this->qos['where'] = array_merge($this->qos['where'], $this->parseWhere($column, $operator, $value));
-        }
-
-        return $this;
-    }
-
-    /**
-     * 设置或条件
-     *
-     * @param $column
-     * @param null $operator
-     * @param null $value
-     * @return $this
-     */
-    public function orWhere($column, $operator = null, $value = null)
-    {
-        if ($column instanceof \Closure) {
-            if (empty($column())) {
-                return $this;
-            }
-            $this->qos['where'][] = !empty($this->qos['where']) ? ' OR (' : ' (';
-            $this->qos['where'][] = $column;
-            $this->qos['where'][] = ')';
-        } else {
-            if (!is_array($column) && is_null($operator) && is_null($value)) {
-                $operator = '=';
-                $value = $column;
-                $column = $this->getPrimaryKey($this->qos['table']);
-            }
-            $this->qos['where'] = array_merge($this->qos['where'], $this->parseWhere($column, $operator, $value, 'OR'));
-        }
-        return $this;
-    }
-
-    /**
-     * 排它锁（X锁）
-     *
-     * 排它锁：加锁之前请开启事务，加锁之后，其它事务只能读取不能更新，如果其它事务也加了for update，
-     * 那其它事务会阻塞等待前一个加锁的事务提交之后才能读取并加锁
-     *
-     * @return $this
-     */
-    public function forUpdate()
-    {
-        $this->qos['forUpdate'] = true;
-        return $this;
-    }
-
-    /**
-     * 分组
-     *
-     * @param $group
-     * @return $this
-     */
-    public function group($group)
-    {
-        $this->qos['groupBy'] = ' GROUP BY ' . $group;
-        return $this;
-    }
-
-    /**
-     * 排序
-     *
-     * @param $order
-     * @return $this
-     */
-    public function order($order)
-    {
-        if (!empty($order)) {
-            $this->qos['orderBy'] = ' ORDER BY ' . $order;
-        }
-        return $this;
-    }
-
-    public function having($having)
-    {
-        if (!empty($having)) {
-            $this->qos['having'] = ' HAVING ' . $having;
-        }
-        return $this;
-    }
-
-    /**
-     * 限制行数
-     *
-     * @param $limit int|string
-     * @return $this
-     */
-    public function limit($limit)
-    {
-        if ($limit > 0) {
-            $this->qos['limit'] = $limit;
-        }
-        return $this;
-    }
-
-    /**
-     * 分页
-     *
-     * @param array $page
-     * @return $this
-     */
-    public function page(array &$page)
-    {
-        $this->qos['page'] = &$page;
-        $this->qos['limit'] = ($page['p'] - 1) * $page['limit'] . ',' . $page['limit'];
-        return $this;
-    }
-
-    /**
-     * 设置表别名
-     *
-     * @param $alias
-     * @return $this
-     */
-    public function alias($alias)
-    {
-        $this->qos['alias'] = $alias;
-        return $this;
-    }
-
-    /**
-     * 连表操作
-     *
-     * @param $table
-     * @param $condition
-     * @param $type
-     * @return $this
-     */
-    public function join($table, $condition, $type = 'LEFT')
-    {
-        $this->qos['join'] .= ' ' . $type . ' JOIN ' . $table . ' ON ' . $condition;
-        return $this;
-    }
-
-    /**
-     * 获取表名
-     *
-     * @return mixed
-     */
-    public function getTable()
-    {
-        return $this->qos['table'];
-    }
-
-    /**
-     * 获取格式化后表名
-     *
-     * @return string
-     */
-    public function getFormatTable()
-    {
-        $table = $this->qos['table'];
-        if (strpos($table, ' ') === false) {
-            $table = '`' . $table . '`';
-        }
-        if (!empty($this->qos['alias'])) {
-            $table .= ' `' . $this->qos['alias'] . '`';
-        }
-
-        return $table;
-    }
-
-    public function mode($mode)
-    {
-        $this->qos['mode'] = $mode;
-        return $this;
+        $query = new Query($this);
+        return $query->table($this->prefix . $table);
     }
 
     /**
      * 获取一行
      *
-     * @param string $fields
+     * @param Query $query
+     * @param string $select
      * @return array
+     * @throws Exception
      */
-    public function row($fields = '')
+    public function row(Query $query, string $select = '')
     {
-        if (!empty($fields)) {
-            $this->qos['fields'] = $fields;
+        if (!empty($select)) {
+            $query->qos['select'] = $select;
         }
-        $this->qos['limit'] = 1;
-        $this->buildQuery();
-        $ret = $this->query($this->qos['sql'], $this->qos['params'], 'one', $this->qos['mode']);
-        $this->resetOptions();
+        $query->qos['limit'] = 1;
+        $this->buildQuery($query);
+        $ret = $this->query($query->qos['sql'], $query->qos['params'], 'one', $query->qos['mode']);
         return $ret;
     }
 
     /**
      * 获取一列
      *
-     * @param string $fields * |name |name, avatar
+     * @param string $select
      * @param string $key
      * @return array
      */
-    public function column($fields, $key = null)
+    public function column(Query $query, $select, $key = null)
     {
+        $query->qos['select'] = $select;
         $count = 0;
         $column = null;
-        if ($fields != '*') {
-            $field_arr = explode(',', $fields);
+        if ($select != '*') {
+            $field_arr = explode(',', $select);
             $count = count($field_arr);
             if (!is_null($key) && $count == 1) {
-                $column = $fields;
+                $column = $select;
             }
             if (!is_null($key) && !in_array($key, $field_arr)) {
                 array_unshift($field_arr, $key);
                 $count++;
             }
-            $this->qos['fields'] = implode(',', $field_arr);
+            $query->qos['select'] = implode(',', $field_arr);
         }
 
-        $this->buildQuery();
-        $this->_execute($this->qos['sql'], $this->qos['params']);
+        $this->buildQuery($query);
+        $this->_execute($query->qos['sql'], $query->qos['params']);
         if ($count == 1) {
             $rows = $this->stmt->fetchAll(PDO::FETCH_COLUMN);
         } else {
             $rows = array_column($this->stmt->fetchAll(PDO::FETCH_ASSOC), $column, $key);
         }
-        $this->resetOptions();
         return $rows;
     }
 
@@ -448,19 +236,18 @@ class Connection
      * @param string $field
      * @return int|string|false|null
      */
-    public function value($field = '')
+    public function value(Query $query, $field = '')
     {
         if (!empty($field)) {
-            $this->qos['fields'] = $field;
+            $query->qos['select'] = $field;
         }
 
-        $this->qos['limit'] = 1;
-        $this->buildQuery();
+        $query->qos['limit'] = 1;
+        $this->buildQuery($query);
 
-        $this->_execute($this->qos['sql'], $this->qos['params'], true);
-        $this->resetOptions();
+        $this->_execute($query->qos['sql'], $query->qos['params'], true);
         if (!$this->stmt) {
-            return NULL;
+            return null;
         }
 
         $value = $this->stmt->fetchColumn();
@@ -473,29 +260,28 @@ class Connection
      * @param $need_page bool
      * @return array
      */
-    public function select($need_page = true)
+    public function list(Query $query, $need_page = true)
     {
-        $this->buildQuery();
+        $this->buildQuery($query);
 
-        if (!empty($this->qos['page'])) {
+        if (!empty($query->qos['page'])) {
             if ($need_page) {
-                $table = $this->getFormatTable();
-                if (empty($this->qos['groupBy'])) {
-                    $sql = 'SELECT COUNT(*) as total FROM ' . $table . $this->qos['join'] . $this->qos['condition'] . ' LIMIT 1';
+                $table = self::getFormatTable($query);
+                if (empty($query->qos['groupBy'])) {
+                    $sql = 'SELECT COUNT(*) as total FROM ' . $table . $query->qos['join'] . $query->qos['condition'] . ' LIMIT 1';
                 } else {
-                    $sql = 'SELECT COUNT(*) as total FROM (SELECT count(*) FROM ' . $table . $this->qos['join'] . $this->qos['condition'] . $this->qos['groupBy'] . ') c LIMIT 1';
+                    $sql = 'SELECT COUNT(*) as total FROM (SELECT count(*) FROM ' . $table . $query->qos['join'] . $query->qos['condition'] . $query->qos['groupBy'] . ') c LIMIT 1';
                 }
-                $total = (int)$this->query($sql, $this->qos['params'], 'one')['total'];
-                $this->qos['page']['total'] = $total;
-                $this->qos['page']['total_page'] = ceil($this->qos['page']['total'] / $this->qos['page']['limit']);
+                $total = (int)$this->query($sql, $query->qos['params'], 'one')['total'];
+                $query->qos['page']['total'] = $total;
+                $query->qos['page']['total_page'] = ceil($query->qos['page']['total'] / $query->qos['page']['limit']);
             } else {
-                $this->qos['page']['total'] = 0;
-                $this->qos['page']['total_page'] = 0;
+                $query->qos['page']['total'] = 0;
+                $query->qos['page']['total_page'] = 0;
             }
         }
 
-        $rows = $this->query($this->qos['sql'], $this->qos['params'], 'all');
-        $this->resetOptions();
+        $rows = $this->query($query->qos['sql'], $query->qos['params'], 'all');
         return $rows;
     }
 
@@ -506,10 +292,10 @@ class Connection
      * @param int $step
      * @return bool|int
      */
-    public function inc($field, $step = 1)
+    public function inc(Query $query, $field, $step = 1)
     {
         $data = [$field => ['+', $step]];
-        return $this->update($data);
+        return $this->update($query, $data);
     }
 
     /**
@@ -519,10 +305,10 @@ class Connection
      * @param int $step
      * @return bool|int
      */
-    public function dec($field, $step = 1)
+    public function dec(Query $query, $field, $step = 1)
     {
         $data = [$field => ['-', $step]];
-        return $this->update($data);
+        return $this->update($query, $data);
     }
 
     /**
@@ -531,9 +317,9 @@ class Connection
      * @param $field
      * @return int
      */
-    public function count($field = '*')
+    public function count(Query $query, $field = '*')
     {
-        return (int)$this->converge('COUNT', $field);
+        return (int)$this->converge($query, 'COUNT', $field);
     }
 
     /**
@@ -542,9 +328,9 @@ class Connection
      * @param $field
      * @return int|mixed
      */
-    public function sum($field)
+    public function sum(Query $query, $field)
     {
-        return $this->converge('SUM', $field);
+        return $this->converge($query, 'SUM', $field);
     }
 
     /**
@@ -553,9 +339,9 @@ class Connection
      * @param $field
      * @return int|mixed
      */
-    public function avg($field)
+    public function avg(Query $query, $field)
     {
-        return $this->converge('AVG', $field);
+        return $this->converge($query, 'AVG', $field);
     }
 
     /**
@@ -564,9 +350,9 @@ class Connection
      * @param $field
      * @return int|mixed
      */
-    public function max($field)
+    public function max(Query $query, $field)
     {
-        return $this->converge('MAX', $field);
+        return $this->converge($query, 'MAX', $field);
     }
 
     /**
@@ -575,9 +361,9 @@ class Connection
      * @param $field
      * @return int|mixed
      */
-    public function min($field)
+    public function min(Query $query, $field)
     {
-        return $this->converge('MIN', $field);
+        return $this->converge($query, 'MIN', $field);
     }
 
     /**
@@ -587,10 +373,10 @@ class Connection
      * @param $field
      * @return int|mixed
      */
-    protected function converge($type, $field)
+    protected function converge(Query $query, $type, $field)
     {
-        $this->qos['fields'] = $type . '(' . $field . ') ret';
-        $row = $this->row();
+        $query->qos['select'] = $type . '(' . $field . ') ret';
+        $row = $this->row($query);
         return $row['ret'] ? $row['ret'] : 0;
     }
 
@@ -600,38 +386,39 @@ class Connection
      * @return string
      * @throws Exception
      */
-    public function buildQuery()
+    public static function buildQuery(Query $query)
     {
-        if (empty($this->qos['table'])) {
+        if (empty($query->qos['table'])) {
             throw new Exception('not set table in db query build');
         }
-        $table = $this->getFormatTable();
+        $table = self::getFormatTable($query);
 
-        $sql = 'SELECT ' . $this->qos['fields'] . ' FROM ' . $table;
-        if (!empty($this->qos['join'])) {
-            $sql .= $this->qos['join'];
+        $sql = 'SELECT ' . $query->qos['select'] . ' FROM ' . $table;
+        if (!empty($query->qos['join'])) {
+            $sql .= $query->qos['join'];
         }
 
-        $this->qos['condition'] = !empty($this->qos['where']) ? ' WHERE ' . $this->buildWhere($this->qos['where'], $this->qos['params']) : '';
-        $sql .= $this->qos['condition'];
+        $query->qos['condition'] = !empty($query->qos['where']) ? ' WHERE ' . self::buildWhere($query->qos['where'], $query->qos['params']) : '';
+        $sql .= $query->qos['condition'];
 
-        if (!empty($this->qos['groupBy'])) {
-            $sql .= $this->qos['groupBy'];
+        if (!empty($query->qos['groupBy'])) {
+            $sql .= ' GROUP BY ' . $query->qos['groupBy'];
         }
-        if (!empty($this->qos['having'])) {
-            $sql .= $this->qos['having'];
+        if (!empty($query->qos['having'])) {
+            $sql .= ' HAVING ' . $query->qos['having'];
         }
-        if (!empty($this->qos['orderBy'])) {
-            $sql .= $this->qos['orderBy'];
+        if (!empty($query->qos['orderBy'])) {
+            $sql .= ' ORDER BY ' . $query->qos['orderBy'];
         }
-        if (!empty($this->qos['limit'])) {
-            $sql .= ' LIMIT ' . $this->qos['limit'];
+        if (!empty($query->qos['limit'])) {
+            $sql .= ' LIMIT ' . $query->qos['limit'];
         }
-        if ($this->qos['forUpdate']) {
+        if ($query->qos['forUpdate']) {
             $sql .= ' FOR UPDATE';
         }
 
-        $this->qos['sql'] = $sql;
+        $query->qos['sql'] = $sql;
+        $query->connection()->sql = $sql;
 
         return $sql;
     }
@@ -643,7 +430,7 @@ class Connection
      * @param array $params
      * @return string
      */
-    public function buildWhere($where, array &$params)
+    public static function buildWhere($where, array &$params)
     {
         $condition = '';
         foreach ($where as $item) {
@@ -651,7 +438,7 @@ class Connection
                 $condition .= $item;
                 continue;
             } elseif ($item instanceof \Closure) {
-                $condition .= $this->buildWhere($this->parseWhere($item()), $params);
+                $condition .= self::buildWhere(self::parseWhere($item()), $params);
                 continue;
             }
             if ($item['column'] == '_string') {
@@ -702,7 +489,7 @@ class Connection
      * @param string $logic
      * @return array
      */
-    public function parseWhere($column, $operator = null, $value = null, $logic = 'AND')
+    public static function parseWhere($column, $operator = null, $value = null, $logic = 'AND')
     {
         $where = [];
         if (is_array($column)) {
@@ -746,30 +533,6 @@ class Connection
     }
 
     /**
-     * 重置查询选项
-     */
-    private function resetOptions()
-    {
-        $this->qos = [
-            'table' => '',
-            'alias' => '',
-            'fields' => '*',
-            'join' => '',
-            'where' => [],
-            'forUpdate' => false,
-            'params' => [],
-            'groupBy' => '',
-            'orderBy' => '',
-            'having' => '',
-            'limit' => '',
-            'page' => [],
-            'mode' => PDO::FETCH_ASSOC,
-            'condition' => '',
-            'sql' => '',
-        ];
-    }
-
-    /**
      * 执行查询语句
      *
      * @param string $sql
@@ -782,7 +545,6 @@ class Connection
     {
         $this->_execute($sql, $params, true);
         if (!$this->stmt) {
-            $this->resetOptions();
             return [];
         }
 
@@ -806,7 +568,7 @@ class Connection
      */
     public function queryOne($sql, $params = null, $mode = PDO::FETCH_ASSOC)
     {
-        return $this->query($sql, $params = null, 'one', $mode = PDO::FETCH_ASSOC);
+        return $this->query($sql, $params, 'one', $mode);
     }
 
     /**
@@ -832,9 +594,9 @@ class Connection
      * @param array $data
      * @return bool|string
      */
-    public function insert(array $data)
+    public function insert(Query $query, array $data)
     {
-        $table = $this->qos['table'];
+        $table = $query->qos['table'];
         if (empty($table) || empty($data)) {
             return false;
         }
@@ -848,7 +610,6 @@ class Connection
         $sql = sprintf('INSERT INTO `%s` (%s) VALUES (%s)', $table, $fields, $values);
 
         $ret = $this->execute($sql, $params);
-        $this->resetOptions();
         if (!$ret) {
             return false;
         }
@@ -863,13 +624,14 @@ class Connection
     /**
      * 批量插入数据
      *
+     * @param Query $query
      * @param $data
      * @param bool $returnId
      * @return bool|string
      */
-    public function insertMulti($data, $returnId = false)
+    public function insertList(Query $query, $data, $returnId = false)
     {
-        $table = $this->qos['table'];
+        $table = $query->qos['table'];
         if (empty($table) || empty($data) || !isset($data[0]) || !is_array($data[0])) {
             return false;
         }
@@ -887,7 +649,6 @@ class Connection
         //组装SQL语句
         $sql = sprintf('INSERT INTO `%s` (%s) VALUES %s', $table, $fields, $values);
 
-        $this->resetOptions();
         $result = $this->execute($sql, $params);
 
         //当返回数据需要返回insert id时
@@ -905,19 +666,19 @@ class Connection
      * @return bool|int
      * @throws Exception
      */
-    public function update(array $data)
+    public function update(Query $query, array $data)
     {
-        if (empty($this->qos['table'])) {
+        if (empty($query->qos['table'])) {
             throw new \Exception('db update need appoint table name');
         }
-        if (empty($this->qos['where'])) {
+        if (empty($query->qos['where'])) {
             throw new Exception('db update need where condition');
         }
         if (empty($data)) {
             throw new \Exception('db update need data not empty');
         }
 
-        $this->filterFields($this->qos['table'], $data);
+        $this->filterFields($query->qos['table'], $data);
         $updateString = '';
         $update_params = [];
         foreach ($data as $key => $val) {
@@ -939,12 +700,11 @@ class Connection
         $updateString = rtrim($updateString, ',');
 
         $params = [];
-        $where = $this->buildWhere($this->qos['where'], $params);
+        $where = $this->buildWhere($query->qos['where'], $params);
         $params = array_merge($update_params, $params);
 
-        $sql = sprintf("UPDATE `%s` SET %s WHERE %s", $this->qos['table'], $updateString, $where);
+        $sql = sprintf("UPDATE `%s` SET %s WHERE %s", $query->qos['table'], $updateString, $where);
         $ret = $this->execute($sql, $params);
-        $this->resetOptions();
         if ($ret) {
             return $this->stmt->rowCount();
         }
@@ -954,24 +714,24 @@ class Connection
     /**
      * 数据表删除操作
      *
+     * @param Query $query
      * @return bool|int
      * @throws Exception
      */
-    public function delete()
+    public function delete(Query $query)
     {
-        if (empty($this->qos['table'])) {
+        if (empty($query->qos['table'])) {
             throw new Exception('db operation need appoint table name');
         }
-        if (empty($this->qos['where'])) {
+        if (empty($query->qos['where'])) {
             throw new Exception('db operation need where condition');
         }
 
         $params = [];
-        $where = $this->buildWhere($this->qos['where'], $params);
+        $where = $this->buildWhere($query->qos['where'], $params);
 
-        $sql = sprintf("DELETE FROM `%s` WHERE %s", $this->qos['table'], $where);
+        $sql = sprintf("DELETE FROM `%s` WHERE %s", $query->qos['table'], $where);
         $ret = $this->execute($sql, $params);
-        $this->resetOptions();
         if ($ret) {
             return $this->stmt->rowCount();
         }
@@ -1015,6 +775,25 @@ class Connection
             $this->pdo->rollBack();
         }
         return true;
+    }
+
+    /**
+     * 获取格式化后表名
+     *
+     * @param Query $query
+     * @return string
+     */
+    public static function getFormatTable(Query $query)
+    {
+        $table = $query->qos['table'];
+        if (strpos($table, ' ') === false) {
+            $table = '`' . $table . '`';
+        }
+        if (!empty($query->qos['alias'])) {
+            $table .= ' `' . $query->qos['alias'] . '`';
+        }
+
+        return $table;
     }
 
     /**
@@ -1193,7 +972,7 @@ class Connection
     public function getTableList()
     {
         //执行SQL语句，获取数据信息
-        $tableList = $this->mode(PDO::FETCH_COLUMN)->query("SHOW TABLES");
+        $tableList = $this->query("SHOW TABLES", null, null, PDO::FETCH_COLUMN);
         if (!$tableList) {
             return [];
         }
